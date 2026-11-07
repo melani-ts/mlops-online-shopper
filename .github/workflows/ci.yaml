@@ -10,5 +10,5 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements-api.txt ruff
-      - run: ruff check api tests
+      - run: ruff check api test
       - run: pytest -q
