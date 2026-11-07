@@ -1,4 +1,6 @@
 [core]
-    remote = local
+    remote = dagshub
 ['remote "local"']
     url = ../../dvc-storage
+['remote "dagshub"']
+    url = https://dagshub.com/melani-ts/mlops-online-shopper.dvc
