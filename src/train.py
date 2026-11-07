@@ -1,4 +1,5 @@
 """Etapa train: entrena, registra el run en MLflow y guarda models/model.pkl."""
+import os
 from pathlib import Path
 
 import joblib
@@ -23,7 +24,7 @@ X_test, y_test = test.drop(columns=[target]), test[target]
 dvc_file = yaml.safe_load(open("data/raw/online_shoppers_intention.csv.dvc", encoding="utf-8"))
 data_md5 = dvc_file["outs"][0]["md5"]
 
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
 mlflow.set_experiment(cfg["experiment"])
 
 with mlflow.start_run():
