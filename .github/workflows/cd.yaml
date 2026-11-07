@@ -1,0 +1,28 @@
+name: CD
+on:
+  push:
+    branches: [master, entrega/e*]
+permissions:
+  contents: read
+  packages: write
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install dvc
+      - name: Traer el modelo
+        run: |
+          dvc remote modify dagshub --local auth basic
+          dvc remote modify dagshub --local user ${{ secrets.DAGSHUB_USER }}
+          dvc remote modify dagshub --local password ${{ secrets.DAGSHUB_TOKEN }}
+          dvc pull models/model.pkl
+      - name: Construir y publicar la imagen
+        run: |
+          IMAGEN=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]'):latest
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker build -t "$IMAGEN" .
+          docker push "$IMAGEN"
