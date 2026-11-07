@@ -1,0 +1,14 @@
+name: CI
+on:
+  pull_request:
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-api.txt ruff
+      - run: ruff check api tests
+      - run: pytest -q
