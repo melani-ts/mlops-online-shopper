@@ -6,15 +6,15 @@ import joblib
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LinearRegression
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
-    X = pd.DataFrame({"ProductRelated_Duration": [0, 100], "BounceRates": [0, 1]})
-    joblib.dump(LogisticRegression().fit(X, [False, True]), tmp_path / "model.pkl")
+    X = pd.DataFrame({"tenure": [1, 60], "MonthlyCharges": [90, 20]})
+    joblib.dump(LogisticRegression().fit(X, ["Yes", "No"]), tmp_path / "model.pkl")
     monkeypatch.setenv("MODEL_DIR", str(tmp_path))
     import api.app as modulo
     importlib.reload(modulo)
@@ -26,10 +26,10 @@ def test_health(client):
 
 
 def test_predict(client):
-    r = client.post("/predict", json={"ProductRelated_Duration": 2, "BounceRates": 0.9})
+    r = client.post("/predict", json={"tenure": 2})
     assert r.status_code == 200
-    assert r.json()["prediccion"] in {True, False}
+    assert r.json()["prediccion"] in {"Yes", "No"}
 
 
 def test_dato_invalido(client):
-    assert client.post("/predict", json={"ProductRelated_Duration": "invalid", "BounceRates": 0.9}).status_code == 422
+    assert client.post("/predict", json={"tenure": "muchos"}).status_code == 422
