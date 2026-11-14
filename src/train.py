@@ -24,32 +24,32 @@ X_test, y_test = test.drop(columns=[target]), test[target]
 dvc_file = yaml.safe_load(open("data/raw/online_shoppers_intention.csv.dvc", encoding="utf-8"))
 data_md5 = dvc_file["outs"][0]["md5"]
 
-mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
-mlflow.set_experiment(cfg["experiment"])
+#mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
+#mlflow.set_experiment(cfg["experiment"])
 
-with mlflow.start_run():
-    mlflow.set_tag("data_md5", data_md5)
-    mlflow.log_params(p)
+#with mlflow.start_run():
+#    mlflow.set_tag("data_md5", data_md5)
+#    mlflow.log_params(p)
 
-    model = RandomForestClassifier(
-        n_estimators=p["n_estimators"],
-        max_depth=p["max_depth"],
-        random_state=params["prepare"]["random_state"],
-    )
-    model.fit(X_train, y_train)
+model = RandomForestClassifier(
+    n_estimators=p["n_estimators"],
+    max_depth=p["max_depth"],
+    random_state=params["prepare"]["random_state"],
+)
+model.fit(X_train, y_train)
 
-    pred = model.predict(X_test)
-    mlflow.log_metrics({
-        "accuracy": accuracy_score(y_test, pred),
-        "f1_macro": f1_score(y_test, pred, average="macro"),
-    })
-    mlflow.sklearn.log_model(
-        model,
-        name="model",
-        registered_model_name=cfg["model_name"],
-        input_example=X_train.head(3),
-        serialization_format="cloudpickle",
-    )
+pred = model.predict(X_test)
+#    mlflow.log_metrics({
+#        "accuracy": accuracy_score(y_test, pred),
+#        "f1_macro": f1_score(y_test, pred, average="macro"),
+#    })
+#    mlflow.sklearn.log_model(
+#        model,
+#        name="model",
+#        registered_model_name=cfg["model_name"],
+#        input_example=X_train.head(3),
+#        serialization_format="cloudpickle",
+#    )
 
 Path("models").mkdir(exist_ok=True)
 joblib.dump(model, "models/model.pkl")
