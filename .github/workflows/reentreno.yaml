@@ -2,6 +2,8 @@ name: Reentreno
 on:
   schedule:
     - cron: "0 6 * * 1"   # cada lunes a las 06:00 UTC
+  push: 
+    branches: [fix/reentreno, feat/reentreno]
   workflow_dispatch:       # y también con un botón
 permissions:
   contents: write
