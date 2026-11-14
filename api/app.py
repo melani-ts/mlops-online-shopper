@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 LOGS = Path(os.getenv("LOGS_DIR", "logs"))
 modelo = joblib.load(Path(os.getenv("MODEL_DIR", "models")) / "model.pkl")
-app = FastAPI(title="API de predicción de Churn (Telco)")
+app = FastAPI(title="API de predicción de compra (Online Shoppers)")
 Instrumentator().instrument(app).expose(app)
 
 try:
@@ -32,6 +32,7 @@ def guardar_entrada(datos):
         if nuevo:
             escritor.writeheader()
         escritor.writerow(datos)
+
 
 class Sesion(BaseModel):
     """Columnas del dataset (sin Revenue). Los valores por defecto son la mediana o la moda del dataset."""

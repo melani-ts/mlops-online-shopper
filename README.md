@@ -48,17 +48,55 @@ Para verlo:
 mlflow ui --backend-store-uri sqlite:///mlflow.db
 ```
 
+## Monitoreo con Prometheus y Grafana
+La API expone sus métricas en `/metrics` (tráfico, errores, latencia y el contador `predicciones_total` por clase). Prometheus las lee cada 20 segundos y Grafana las dibuja.
+
+```bash
+dvc pull                                         # trae models/model.pkl
+docker compose up --build                        # api :8000 · prometheus :9090 · grafana :3000
+python src/generar_trafico.py http://localhost:8000 30
+```
+
+| Panel de Grafana | Consulta |
+|---|---|
+| Tráfico | `sum(rate(http_requests_total[2m]))` |
+| Errores | `sum(rate(http_requests_total{status="5xx"}[2m]))` |
+| Latencia p95 | `histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[2m])) by (le))` |
+| Predicciones por clase | `sum(rate(predicciones_total[2m])) by (clase)` |
+
+## Drift
+Cada petición a `/predict` se guarda en `logs/entradas.csv`. Para simular el cambio que dejaría una campaña nueva, `src/simular_drift.py` toma 500 sesiones del dataset y les cambia dos columnas: `PageValues` × 0.3 y `VisitorType = New_Visitor` en el 60 % de las filas. Luego `src/drift.py` compara esos datos con los del entrenamiento usando Evidently y escribe `reports/drift.html`.
+
+```bash
+python src/simular_drift.py      # escribe logs/actual.csv
+python src/drift.py              # escribe reports/drift.html
+```
+
+![Informe de drift de Evidently](docs/img/drift.png)
+
+**Qué columnas cambiaron.** Evidently marcó drift en 2 de 17 columnas (11.8 %): `VisitorType` (Jensen-Shannon 0.40) y `PageValues` (Wasserstein 0.23), justo las dos que tocamos. Como cambió menos de la mitad de las columnas, el informe dice que el conjunto no tiene drift.
+
+**Decisión: reentrenaríamos.**
+1. Aunque solo cambiaron 2 columnas, `PageValues` es la variable que más pesa en el modelo, y su media bajó de 5.89 a 1.71.
+2. Los visitantes nuevos pasaron del 13.7 % al 66.8 % de las sesiones, un tipo de cliente que el modelo vio poco al entrenar y que casi no compra.
+3. Con esos dos cambios es muy probable que el modelo prediga mal cuántas sesiones compran, así que antes de seguir con la v7 conviene reentrenar con datos recientes y comparar el F1 macro en MLflow.
+
+Nota: si se compara con las 30 filas de `logs/entradas.csv` (`python src/drift.py logs/entradas.csv`), las 17 columnas salen con drift. Esas filas las inventa `generar_trafico.py` a partir de un solo caso, así que no se parecen a los datos reales. Con tan pocas filas el informe no sirve para decidir.
+
 ## Estructura
 ```
 data/raw/        dataset original (versionado con DVC)
 data/prepared/   salida de la etapa prepare
 models/          modelo entrenado
-src/             scripts de cada etapa (prepare.py, train.py, evaluate.py)
+src/             scripts de cada etapa (prepare.py, train.py, evaluate.py), generar_trafico.py, simular_drift.py y drift.py
+api/             API de inferencia (FastAPI) con métricas para Prometheus
+logs/, reports/  entradas de la API e informes de drift (no se suben a git)
 labs/            guías de los laboratorios, una carpeta por fin de semana (FDS1, FDS2, FDS3)
 params.yaml      parámetros del pipeline
 dvc.yaml         definición del pipeline
 dvc.lock         estado de la última ejecución del pipeline
 metrics.json     métricas del modelo en test
+docker-compose.yml, prometheus.yml   API + Prometheus + Grafana
 ```
 
 ## Entregas
