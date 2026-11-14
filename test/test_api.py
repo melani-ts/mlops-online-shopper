@@ -16,6 +16,7 @@ def client(tmp_path, monkeypatch):
     X = pd.DataFrame({"ProductRelated_Duration": [0, 100], "BounceRates": [0, 1]})
     joblib.dump(LogisticRegression().fit(X, [False, True]), tmp_path / "model.pkl")
     monkeypatch.setenv("MODEL_DIR", str(tmp_path))
+    monkeypatch.setenv("LOGS_DIR", str(tmp_path / "logs"))
     import api.app as modulo
     importlib.reload(modulo)
     return TestClient(modulo.app)
@@ -23,6 +24,13 @@ def client(tmp_path, monkeypatch):
 
 def test_health(client):
     assert client.get("/health").json() == {"status": "ok"}
+
+
+def test_predict(client, tmp_path):
+    r = client.post("/predict", json={"ProductRelated_Duration": 2, "BounceRates": 0.9})
+    assert r.status_code == 200
+    assert r.json()["prediccion"] in {"True", "False"}
+    assert (tmp_path / "logs" / "entradas.csv").exists()
 
 
 def test_dato_invalido(client):
