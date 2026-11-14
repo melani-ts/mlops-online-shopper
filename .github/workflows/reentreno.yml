@@ -1,0 +1,61 @@
+name: Reentreno
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # cada lunes a las 06:00 UTC
+  workflow_dispatch:       # y también con un botón
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  reentrenar:
+    runs-on: ubuntu-latest
+    env:
+      # Cambien <usuario>/<repo> por los del repositorio en DagsHub.
+      MLFLOW_TRACKING_URI: https://dagshub.com/melani-ts/mlops-online-shopper
+      MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USER }}
+      MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+      METRICA: f1_macro    # la métrica de metrics.json que decide
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Traer datos y modelo
+        run: |
+          dvc remote modify dagshub --local auth basic
+          dvc remote modify dagshub --local user ${{ secrets.DAGSHUB_USER }}
+          dvc remote modify dagshub --local password ${{ secrets.DAGSHUB_TOKEN }}
+          dvc pull
+      - name: Reentrenar
+        run: |
+          cp metrics.json metrics_antes.json
+          dvc repro
+      - name: Comparar con el modelo en uso
+        id: comparar
+        run: |
+          python - <<'FIN' >> "$GITHUB_OUTPUT"
+          import json, os, sys
+          m = os.environ["METRICA"]
+          antes = json.load(open("metrics_antes.json"))[m]
+          ahora = json.load(open("metrics.json"))[m]
+          print(f"{m}: antes {antes}, ahora {ahora}", file=sys.stderr)
+          print("mejora=" + ("true" if ahora >= antes else "false"))
+          FIN
+      - name: Subir el modelo nuevo a DagsHub
+        if: steps.comparar.outputs.mejora == 'true'
+        run: dvc push
+      - name: Abrir el Pull Request
+        if: steps.comparar.outputs.mejora == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: reentreno/automatico
+          base: master
+          add-paths: |
+            dvc.lock
+            metrics.json
+          commit-message: Reentrena el modelo con los datos actuales
+          title: "Reentreno: modelo nuevo igual o mejor que el actual"
+          body: |
+            El workflow Reentreno entrenó un modelo nuevo y su métrica es igual o mejor que la del modelo en uso.
+            Revisen metrics.json y el run en MLflow antes de aprobar. Al unir este PR, el CD publica la imagen.
