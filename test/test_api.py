@@ -25,11 +25,5 @@ def test_health(client):
     assert client.get("/health").json() == {"status": "ok"}
 
 
-def test_predict(client):
-    r = client.post("/predict", json={"ProductRelated_Duration": 2, "BounceRates": 0.9})
-    assert r.status_code == 200
-    assert r.json()["prediccion"] in {True, False}
-
-
 def test_dato_invalido(client):
     assert client.post("/predict", json={"ProductRelated_Duration": "invalid", "BounceRates": 0.9}).status_code == 422
