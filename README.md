@@ -64,6 +64,8 @@ python src/generar_trafico.py http://localhost:8000 30
 | Latencia p95 | `histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[2m])) by (le))` |
 | Predicciones por clase | `sum(rate(predicciones_total[2m])) by (clase)` |
 
+![Panel de Grafana de la API](docs/img/grafana.png)
+
 ## Drift
 Cada petición a `/predict` se guarda en `logs/entradas.csv`. Para simular el cambio que dejaría una campaña nueva, `src/simular_drift.py` toma 500 sesiones del dataset y les cambia dos columnas: `PageValues` × 0.3 y `VisitorType = New_Visitor` en el 60 % de las filas. Luego `src/drift.py` compara esos datos con los del entrenamiento usando Evidently y escribe `reports/drift.html`.
 
